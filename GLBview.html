@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GLB Viewer - View Fixed Edition</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    model-viewer { width: 100vw; height: 100vh; }
+    #drop-zone {
+      position: fixed; inset: 0;
+      background: rgba(255,255,255,0.8);
+      color: #444;
+      font-size: 1.5rem;
+      display: none; align-items: center; justify-content: center;
+      z-index: 50; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ✅ モデルビューア -->
+  <model-viewer id="viewer"
+    camera-controls auto-rotate exposure="1" shadow-intensity="1"
+    interaction-prompt="none">
+  </model-viewer>
+
+  <!-- ✅ モデル選択パネル -->
+  <div class="absolute top-4 left-4 bg-white shadow-lg rounded-lg p-4 z-10 w-72 text-sm" id="ui-panel">
+    <p class="font-semibold mb-2">モデル選択</p>
+    <div id="model-controls" class="space-y-2 text-xs text-gray-700"></div>
+    <p class="text-gray-400 mt-3">※ .glb をドラッグ＆ドロップ</p>
+  </div>
+
+  <!-- ✅ カメラビューショートカット -->
+  <div class="absolute top-4 right-4 bg-white shadow-lg rounded-lg p-4 z-10 w-64 text-sm">
+    <p class="font-semibold mb-2">カメラビュー切替</p>
+    <div class="grid grid-cols-2 gap-2">
+      <button onclick="setView('0deg 75deg')" class="bg-blue-500 text-white px-2 py-1 rounded">正面</button>
+      <button onclick="setView('180deg 75deg')" class="bg-blue-500 text-white px-2 py-1 rounded">背面</button>
+      <button onclick="setView('90deg 75deg')" class="bg-blue-500 text-white px-2 py-1 rounded">右側</button>
+      <button onclick="setView('-90deg 75deg')" class="bg-blue-500 text-white px-2 py-1 rounded">左側</button>
+      <button onclick="setView('45deg 45deg')" class="bg-blue-500 text-white px-2 py-1 rounded">斜め上</button>
+      <button onclick="setView('0deg 90deg')" class="bg-blue-500 text-white px-2 py-1 rounded">真上</button>
+    </div>
+  </div>
+
+  <!-- ✅ ドロップゾーン -->
+  <div id="drop-zone">ここに .glb をドロップ</div>
+
+  <script>
+    const viewer = document.getElementById("viewer");
+    const modelControls = document.getElementById("model-controls");
+    const dropZone = document.getElementById("drop-zone");
+    const modelMap = new Map(); // key: id, value: blob URL
+
+    // ドロップ処理
+    window.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.style.display = "flex";
+    });
+
+    window.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dropZone.style.display = "none";
+    });
+
+    window.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.style.display = "none";
+
+      const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith(".glb"));
+      files.forEach((file) => {
+        const url = URL.createObjectURL(file);
+        const id = `model-${file.name}`;
+        if (modelMap.has(id)) return;
+
+        modelMap.set(id, url);
+
+        const ctrl = document.createElement("div");
+        ctrl.className = "flex items-center space-x-2";
+        ctrl.innerHTML = `
+          <input type="radio" name="model-radio" id="${id}" data-url="${url}" class="mt-0.5" ${modelMap.size === 1 ? "checked" : ""}>
+          <label for="${id}">${file.name}</label>
+        `;
+        modelControls.appendChild(ctrl);
+
+        ctrl.querySelector("input").addEventListener("change", (e) => {
+          if (e.target.checked) {
+            viewer.src = e.target.dataset.url;
+            adjustCameraAfterLoad();
+          }
+        });
+
+        if (modelMap.size === 1) {
+          viewer.src = url;
+          adjustCameraAfterLoad();
+        }
+      });
+    });
+
+    // ✅ モデル読み込み完了後のカメラ距離調整
+    function adjustCameraAfterLoad() {
+      viewer.addEventListener("load", () => {
+        const dims = viewer.getDimensions();
+        const maxDim = Math.max(dims.x, dims.y, dims.z);
+        const distance = maxDim * 1.5;
+
+        viewer.autoRotate = false;
+        viewer.cameraTarget = "0m 0m 0m";
+        viewer.cameraOrbit = `0deg 75deg ${distance}m`;
+        viewer.minCameraOrbit = `auto auto ${maxDim * 0.5}m`;
+        viewer.maxCameraOrbit = `auto auto ${maxDim * 5}m`;
+        viewer.jumpCameraToGoal();
+      }, { once: true });
+    }
+
+    // ✅ カメラビュー切替（視点固定＋回転停止）
+    function setView(orbitBase) {
+      const dims = viewer.getDimensions();
+      const maxDim = Math.max(dims.x, dims.y, dims.z);
+      const distance = maxDim * 1.5;
+
+      viewer.autoRotate = false;
+      viewer.cameraTarget = "0m 0m 0m";
+      viewer.cameraOrbit = `${orbitBase} ${distance}m`;
+      viewer.jumpCameraToGoal();
+    }
+  </script>
+
+</body>
+</html>

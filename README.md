@@ -12,14 +12,6 @@ GLB Viewer - View Fixed Edition
 モデルサイズに基づく自動カメラ距離調整
 
 # 使用方法
-このリポジトリをクローンまたはダウンロード：
-
-bash
-Copy
-Edit
-git clone https://github.com/your-username/glb-viewer.git
-index.html をブラウザで開く。
-
 .glb ファイルをウィンドウ内にドラッグ＆ドロップして読み込む。
 
 UI左側パネルでモデルを切り替え可能。
